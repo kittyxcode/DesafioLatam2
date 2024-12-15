@@ -38,7 +38,10 @@ jobs:
 
           echo "Created EC2 instance with ID: $INSTANCE_ID"
 
-          # Paso 4: Obtener la IP pública de la instancia
+          # Guardamos el ID de la instancia como salida
+          echo "::set-output name=instance_id::$INSTANCE_ID"
+          
+          # Obtener la IP pública de la instancia
           EC2_PUBLIC_IP=$(aws ec2 describe-instances \
             --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
@@ -47,11 +50,11 @@ jobs:
           echo "EC2 public IP: $EC2_PUBLIC_IP"
           echo "::set-output name=ec2_public_ip::$EC2_PUBLIC_IP"
 
-      # Paso 5: Crear la AMI personalizada
+      # Paso 4: Crear la AMI personalizada desde la instancia EC2
       - name: Create AMI from EC2 instance
         id: create_ami
         run: |
-          # Crear la imagen (AMI) desde la instancia EC2
+          # Crear la imagen (AMI) desde la instancia EC2 utilizando el ID de la instancia
           AMI_ID=$(aws ec2 create-image \
             --instance-id ${{ steps.create_ec2.outputs.instance_id }} \
             --name "mi-ami-personalizada" \
@@ -62,7 +65,7 @@ jobs:
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
 
-      # Paso 6: Copiar los archivos a la instancia EC2
+      # Paso 5: Copiar los archivos a la instancia EC2
       - name: Copy files to EC2
         run: |
           scp -o StrictHostKeyChecking=no -i ~/.ssh/github-actions.pem -r ./ ec2-user@${{ steps.create_ec2.outputs.ec2_public_ip }}:/home/ec2-user/app
