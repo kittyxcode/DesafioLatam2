@@ -20,18 +20,18 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Cambia la región si es necesario
+          aws-region: us-east-1
 
       # Paso 3: Crear la instancia EC2
       - name: Create EC2 Instance
         id: create_ec2
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-0453ec754f44f9a4a \ # Reemplaza con la AMI adecuada
+            --image-id ami-0453ec754f44f9a4a \
             --instance-type t2.micro \
-            --key-name github-actions \  # Asegúrate de que esta clave exista en tu cuenta AWS
-            --security-group-ids sg-069bcf83cf20c922d \ # Reemplaza con tu ID de grupo de seguridad
-            --subnet-id subnet-0771bfc4dab8295c7 \ # Reemplaza con tu ID de subred
+            --key-name github-actions \
+            --security-group-ids sg-069bcf83cf20c922d \
+            --subnet-id subnet-0771bfc4dab8295c7 \
             --associate-public-ip-address \
             --query 'Instances[0].InstanceId' \
             --output text)
