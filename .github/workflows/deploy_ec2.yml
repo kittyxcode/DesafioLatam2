@@ -69,11 +69,23 @@ jobs:
           
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
+          
       # Paso 6: Descargar y configurar la clave SSH
       - name: Setup SSH key
         run: |
+          # Crear el directorio .ssh si no existe
+          mkdir -p ~/.ssh
+          
+          # Guardar la clave privada SSH desde los secretos de GitHub en el archivo .pem
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/github-actions.pem
+          
+          # Cambiar los permisos para que la clave sea legible solo por el propietario
           chmod 600 ~/.ssh/github-actions.pem
+
+          # Configurar el archivo de hosts conocidos para evitar problemas con la verificación del host
+          touch ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ steps.create_ec2.outputs.ec2_public_ip }} >> ~/.ssh/known_hosts
+
       # Paso 7: Copiar los archivos a la instancia EC2
       - name: Copy files to EC2
         run: |
