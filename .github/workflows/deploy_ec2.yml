@@ -35,3 +35,44 @@ jobs:
 
           echo "Instance ID: $INSTANCE_ID"
 
+      - name: Create Security Group
+        run: |
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name my-security-group \
+            --description "Security group for EC2" \
+            --vpc-id vpc-12345678 \
+            --query 'GroupId' \
+            --output text)
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id $SG_ID \
+            --protocol tcp \
+            --port 22 \
+            --cidr 0.0.0.0/0
+
+          echo "Security Group ID: $SG_ID"
+
+      - name: Generate SSH key
+        run: |
+          ssh-keygen -t rsa -b 2048 -f my-key -N ""
+          echo "${{ secrets.MY_KEY }}" > my-key.pem
+
+      - name: Configure VPC and Subnet
+        run: |
+          VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text)
+          SUBNET_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --query 'Subnet.SubnetId' --output text)
+          
+          echo "VPC ID: $VPC_ID"
+          echo "Subnet ID: $SUBNET_ID"
+
+      - name: Create AMI
+        run: |
+          AMI_ID=$(aws ec2 create-image \
+            --instance-id $INSTANCE_ID \
+            --name "CustomAMI" \
+            --description "Custom AMI based on EC2 instance" \
+            --query 'ImageId' \
+            --output text)
+
+          echo "AMI ID: $AMI_ID"
+
