@@ -27,11 +27,11 @@ jobs:
         id: create_ec2
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-0453ec754f44f9a4a \ # Reemplaza con la AMI adecuada
+            --image-id ami-0453ec754f44f9a4a \
             --instance-type t2.micro \
-            --key-name github-actions \  # Asegúrate de que esta clave exista en tu cuenta AWS
-            --security-group-ids sg-069bcf83cf20c922d \ # Reemplaza con tu ID de grupo de seguridad
-            --subnet-id subnet-0771bfc4dab8295c7 \ # Reemplaza con tu ID de subred
+            --key-name github-actions \
+            --security-group-ids sg-069bcf83cf20c922d \
+            --subnet-id subnet-0771bfc4dab8295c7 \
             --associate-public-ip-address \
             --query 'Instances[0].InstanceId' \
             --output text)
@@ -47,7 +47,4 @@ jobs:
           echo "EC2 public IP: $EC2_PUBLIC_IP"
           echo "::set-output name=ec2_public_ip::$EC2_PUBLIC_IP"
 
-      # Paso 5: Copiar los archivos a la instancia EC2
-      - name: Copy files to EC2
-        run: |
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/github-actions.pem -r ./ ec2-user@${{ steps.create_ec2.outputs.ec2_public_ip }}:/home/ec2-user/app
+      # Paso 5: Copiar los archivos a la instancia
