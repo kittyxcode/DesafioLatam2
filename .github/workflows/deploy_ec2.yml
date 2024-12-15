@@ -57,20 +57,24 @@ jobs:
           aws ec2 wait instance-running --instance-ids ${{ steps.create_ec2.outputs.instance_id }}
           echo "EC2 instance is now in 'running' state."
 
-      # Paso 5: Crear la AMI desde la instancia EC2
+      # Paso 5: Crear la AMI desde la instancia EC2 con un nombre único
       - name: Create AMI from EC2 instance
         id: create_ami
         run: |
+          # Generar un nombre único para la AMI usando la fecha y hora actuales
+          AMI_NAME="mi-ami-personalizada-$(date +%Y%m%d%H%M%S)"
+
           # Crear la imagen (AMI) desde la instancia EC2 utilizando el ID de la instancia
           AMI_ID=$(aws ec2 create-image \
             --instance-id ${{ steps.create_ec2.outputs.instance_id }} \
-            --name "mi-ami-personalizada" \
+            --name "$AMI_NAME" \
             --no-reboot \
             --query 'ImageId' \
             --output text)
 
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
+
 
       # Paso 6: Descargar y configurar la clave SSH
       - name: Setup SSH key
