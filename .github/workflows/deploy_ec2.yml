@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,7 +23,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}  # Usamos la variable de repositorio
+          aws-region: ${{ env.AWS_REGION }}
 
       # Paso 3: Crear la instancia EC2
       - name: Create EC2 Instance
@@ -29,60 +32,49 @@ jobs:
           INSTANCE_ID=$(aws ec2 run-instances \
             --image-id ami-0453ec754f44f9a4a \
             --instance-type t2.micro \
-            --key-name ${{ vars.KEY_NAME }}  # Usamos la variable de repositorio
-            --security-group-ids ${{ vars.SECURITY_GROUP_ID }}  # Usamos la variable de repositorio
-            --subnet-id ${{ vars.SUBNET_ID }}  # Usamos la variable de repositorio
+            --key-name ${{ vars.KEY_NAME }} \
+            --security-group-ids ${{ vars.SECURITY_GROUP_ID }} \
+            --subnet-id ${{ vars.SUBNET_ID }} \
             --associate-public-ip-address \
             --query 'Instances[0].InstanceId' \
             --output text)
           echo "Created EC2 instance with ID: $INSTANCE_ID"
-          # Guardamos el ID de la instancia como salida
           echo "::set-output name=instance_id::$INSTANCE_ID"
-          
-          # Obtener la IP pública de la instancia
+
           EC2_PUBLIC_IP=$(aws ec2 describe-instances \
             --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           echo "EC2 public IP: $EC2_PUBLIC_IP"
           echo "::set-output name=ec2_public_ip::$EC2_PUBLIC_IP"
+
       # Paso 4: Esperar a que la instancia esté en estado 'running'
       - name: Wait for EC2 instance to be running
         run: |
           echo "Waiting for EC2 instance to be in 'running' state..."
           aws ec2 wait instance-running --instance-ids ${{ steps.create_ec2.outputs.instance_id }}
           echo "EC2 instance is now in 'running' state."
+
       # Paso 5: Crear la AMI desde la instancia EC2
       - name: Create AMI from EC2 instance
         id: create_ami
         run: |
-          # Crear un nombre único para la AMI utilizando la fecha y hora
           AMI_NAME="mi-ami-personalizada-$(date +'%Y-%m-%d-%H-%M-%S')"
-          
-          # Crear la imagen (AMI) desde la instancia EC2 utilizando el ID de la instancia
           AMI_ID=$(aws ec2 create-image \
             --instance-id ${{ steps.create_ec2.outputs.instance_id }} \
             --name "$AMI_NAME" \
             --no-reboot \
             --query 'ImageId' \
             --output text)
-          
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
-          
+
       # Paso 6: Descargar y configurar la clave SSH
       - name: Setup SSH key
         run: |
-          # Crear el directorio .ssh si no existe
           mkdir -p ~/.ssh
-          
-          # Guardar la clave privada SSH desde los secretos de GitHub en el archivo .pem
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/github-actions.pem
-          
-          # Cambiar los permisos para que la clave sea legible solo por el propietario
           chmod 600 ~/.ssh/github-actions.pem
-
-          # Configurar el archivo de hosts conocidos para evitar problemas con la verificación del host
           touch ~/.ssh/known_hosts
           ssh-keyscan -H ${{ steps.create_ec2.outputs.ec2_public_ip }} >> ~/.ssh/known_hosts
 
