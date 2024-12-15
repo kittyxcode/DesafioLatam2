@@ -56,13 +56,17 @@ jobs:
       - name: Create AMI from EC2 instance
         id: create_ami
         run: |
+          # Crear un nombre único para la AMI utilizando la fecha y hora
+          AMI_NAME="mi-ami-personalizada-$(date +'%Y-%m-%d-%H-%M-%S')"
+          
           # Crear la imagen (AMI) desde la instancia EC2 utilizando el ID de la instancia
           AMI_ID=$(aws ec2 create-image \
             --instance-id ${{ steps.create_ec2.outputs.instance_id }} \
-            --name "mi-ami-personalizada" \
+            --name "$AMI_NAME" \
             --no-reboot \
             --query 'ImageId' \
             --output text)
+          
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
       # Paso 6: Descargar y configurar la clave SSH
