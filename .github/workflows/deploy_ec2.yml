@@ -72,7 +72,13 @@ jobs:
           echo "Created AMI with ID: $AMI_ID"
           echo "::set-output name=ami_id::$AMI_ID"
 
-      # Paso 6: Copiar los archivos a la instancia EC2
+      # Paso 6: Descargar y configurar la clave SSH
+      - name: Setup SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/github-actions.pem
+          chmod 600 ~/.ssh/github-actions.pem
+
+      # Paso 7: Copiar los archivos a la instancia EC2
       - name: Copy files to EC2
         run: |
           scp -o StrictHostKeyChecking=no -i ~/.ssh/github-actions.pem -r ./ ec2-user@${{ steps.create_ec2.outputs.ec2_public_ip }}:/home/ec2-user/app
