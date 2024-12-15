@@ -1,4 +1,4 @@
-name: Deploy EC2
+name: Deploy to EC2
 
 on:
   push:
@@ -10,69 +10,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # Paso 1: Checkout el código
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v3
+      # Paso 2: Configurar las credenciales de AWS
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-1  # Cambia la región si es necesario
 
-      - name: Launch EC2 instance
+      # Paso 3: Crear la instancia EC2
+      - name: Create EC2 Instance
+        id: create_ec2
         run: |
-          # Ejecuta el comando para lanzar la instancia EC2
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-0453ec754f44f9a4a \
-            --count 1 \
+            --image-id ami-0453ec754f44f9a4a \ # Reemplaza con la AMI adecuada
             --instance-type t2.micro \
-            --key-name my-key-pair \
-            --security-group-ids sg-12345678 \
-            --subnet-id subnet-12345678 \
+            --key-name github-actions \  # Asegúrate de que esta clave exista en tu cuenta AWS
+            --security-group-ids sg-069bcf83cf20c922d \ # Reemplaza con tu ID de grupo de seguridad
+            --subnet-id subnet-0771bfc4dab8295c7 \ # Reemplaza con tu ID de subred
+            --associate-public-ip-address \
             --query 'Instances[0].InstanceId' \
             --output text)
 
-          echo "Instance ID: $INSTANCE_ID"
+          echo "Created EC2 instance with ID: $INSTANCE_ID"
 
-      - name: Create Security Group
-        run: |
-          SG_ID=$(aws ec2 create-security-group \
-            --group-name my-security-group \
-            --description "Security group for EC2" \
-            --vpc-id vpc-12345678 \
-            --query 'GroupId' \
+          # Paso 4: Obtener la IP pública de la instancia
+          EC2_PUBLIC_IP=$(aws ec2 describe-instances \
+            --instance-ids $INSTANCE_ID \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
 
-          aws ec2 authorize-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr 0.0.0.0/0
+          echo "EC2 public IP: $EC2_PUBLIC_IP"
+          echo "::set-output name=ec2_public_ip::$EC2_PUBLIC_IP"
 
-          echo "Security Group ID: $SG_ID"
-
-      - name: Generate SSH key
+      # Paso 5: Copiar los archivos a la instancia EC2
+      - name: Copy files to EC2
         run: |
-          ssh-keygen -t rsa -b 2048 -f my-key -N ""
-          echo "${{ secrets.MY_KEY }}" > my-key.pem
-
-      - name: Configure VPC and Subnet
-        run: |
-          VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text)
-          SUBNET_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --query 'Subnet.SubnetId' --output text)
-          
-          echo "VPC ID: $VPC_ID"
-          echo "Subnet ID: $SUBNET_ID"
-
-      - name: Create AMI
-        run: |
-          AMI_ID=$(aws ec2 create-image \
-            --instance-id $INSTANCE_ID \
-            --name "CustomAMI" \
-            --description "Custom AMI based on EC2 instance" \
-            --query 'ImageId' \
-            --output text)
-
-          echo "AMI ID: $AMI_ID"
-
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/github-actions.pem -r ./ ec2-user@${{ steps.create_ec2.outputs.ec2_public_ip }}:/home/ec2-user/app
