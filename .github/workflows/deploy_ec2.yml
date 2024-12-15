@@ -20,7 +20,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}  # Usamos la variable de repositorio
 
       # Paso 3: Crear la instancia EC2
       - name: Create EC2 Instance
@@ -29,9 +29,9 @@ jobs:
           INSTANCE_ID=$(aws ec2 run-instances \
             --image-id ami-0453ec754f44f9a4a \
             --instance-type t2.micro \
-            --key-name github-actions \
-            --security-group-ids sg-069bcf83cf20c922d \
-            --subnet-id subnet-0771bfc4dab8295c7 \
+            --key-name ${{ vars.KEY_NAME }}  # Usamos la variable de repositorio
+            --security-group-ids ${{ vars.SECURITY_GROUP_ID }}  # Usamos la variable de repositorio
+            --subnet-id ${{ vars.SUBNET_ID }}  # Usamos la variable de repositorio
             --associate-public-ip-address \
             --query 'Instances[0].InstanceId' \
             --output text)
